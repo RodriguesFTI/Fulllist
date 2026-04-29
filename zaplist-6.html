@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 ZapList — Gestor de Contatos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', Arial, sans-serif; background: #ECE5DD; min-height: 100vh; }
+
+  .header {
+    background: #075E54; color: white;
+    padding: 16px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .msg-box {
+    background: #128C7E; border-radius: 8px;
+    padding: 10px; margin-bottom: 10px;
+  }
+  .msg-box label { font-size: 11px; color: #DCF8C6; display: block; margin-bottom: 4px; }
+  .msg-box textarea {
+    width: 100%; border: none; border-radius: 6px;
+    padding: 8px; font-size: 13px; resize: vertical;
+    min-height: 60px; outline: none;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+  .stats { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .stat-badge {
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 13px; font-weight: bold;
+  }
+  .stat-badge.green { background: #25D366; }
+  .stat-badge.orange { background: #FF9800; }
+  .progress-bar {
+    width: 100%; height: 6px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px; margin-top: 8px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: #25D366; border-radius: 3px; transition: width 0.3s; }
+
+  .toolbar {
+    background: white; padding: 10px 16px;
+    border-bottom: 1px solid #ddd;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .search-box { flex: 1; min-width: 140px; }
+  .search-box input {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid #ccc; border-radius: 20px;
+    font-size: 14px; outline: none;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+  .sort-select {
+    padding: 8px 10px; border: 1px solid #ccc; border-radius: 20px;
+    font-size: 13px; outline: none; background: white; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif; color: #333;
+  }
+  .btn-import {
+    background: #075E54; color: white; border: none; border-radius: 20px;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; display: flex; align-items: center; gap: 5px;
+    transition: background 0.2s; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-import:hover { background: #128C7E; }
+  .btn-export {
+    background: #1976D2; color: white; border: none; border-radius: 20px;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; display: flex; align-items: center; gap: 5px;
+    transition: background 0.2s; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-export:hover { background: #1565C0; }
+  #fileInput { display: none; }
+
+  .add-panel {
+    background: white; border-bottom: 1px solid #ddd;
+    overflow: hidden; max-height: 0;
+    transition: max-height 0.3s ease, padding 0.3s ease; padding: 0 16px;
+  }
+  .add-panel.open { max-height: 120px; padding: 12px 16px; }
+  .add-panel .add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .add-panel input {
+    flex: 1; min-width: 120px; padding: 8px 12px;
+    border: 1px solid #ccc; border-radius: 20px;
+    font-size: 14px; outline: none; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .add-panel input:focus { border-color: #075E54; }
+  .btn-add-confirm {
+    background: #25D366; color: white; border: none; border-radius: 20px;
+    padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif; transition: background 0.2s; white-space: nowrap;
+  }
+  .btn-add-confirm:hover { background: #128C7E; }
+  .btn-add-open {
+    background: #25D366; color: white; border: none; border-radius: 20px;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; display: flex; align-items: center; gap: 5px;
+    transition: background 0.2s; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-add-open:hover { background: #128C7E; }
+
+  .filters {
+    background: white; padding: 8px 16px;
+    display: flex; gap: 8px; overflow-x: auto; border-bottom: 1px solid #ddd;
+  }
+  .filter-btn {
+    padding: 4px 14px; border-radius: 20px;
+    border: 1px solid #ccc; background: white;
+    font-size: 12px; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; font-family: 'Nunito', Arial, sans-serif; font-weight: 600;
+  }
+  .filter-btn.active { background: #075E54; color: white; border-color: #075E54; }
+
+  .list { padding: 8px 12px; }
+
+  .contact-card {
+    background: white; border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: opacity 0.3s;
+  }
+  .contact-card.sent { opacity: 0.5; }
+  .contact-card.cooldown { opacity: 0.65; border-left: 3px solid #FF9800; }
+  .contact-card.ready { border-left: 3px solid #4CAF50; }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #075E54; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; flex-shrink: 0;
+  }
+  .avatar.sent-av { background: #aaa; }
+  .avatar.cooldown-av { background: #FF9800; }
+  .avatar.ready-av { background: #4CAF50; }
+
+  .info { flex: 1; min-width: 0; }
+  .info .name {
+    font-size: 15px; font-weight: 700; color: #111;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .info .phone { font-size: 12px; color: #666; margin-top: 2px; }
+  .info .num { font-size: 11px; color: #aaa; }
+  .timer-badge {
+    font-size: 11px; font-weight: 700; margin-top: 3px;
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+  }
+  .timer-badge.cooling { background: #FFF3E0; color: #E65100; }
+  .timer-badge.ready-badge { background: #E8F5E9; color: #2E7D32; }
+
+  .btn-send {
+    background: #25D366; color: white; border: none; border-radius: 22px;
+    padding: 8px 12px; font-size: 12px; font-weight: bold; cursor: pointer;
+    white-space: nowrap; transition: all 0.2s; text-decoration: none;
+    display: inline-block; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-send:hover { background: #128C7E; }
+  .btn-send-biz {
+    background: #075E54; color: white; border: none; border-radius: 22px;
+    padding: 8px 12px; font-size: 12px; font-weight: bold; cursor: pointer;
+    white-space: nowrap; transition: all 0.2s; text-decoration: none;
+    display: inline-block; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-send-biz:hover { background: #054c44; }
+  .send-group { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+
+  .btn-undo {
+    background: none; border: none; color: #aaa;
+    font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0;
+  }
+  .btn-delete {
+    background: none; border: none; color: #e57373;
+    font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0;
+    transition: transform 0.15s; line-height: 1;
+  }
+  .btn-delete:hover { transform: scale(1.2); color: #c62828; }
+  .btn-edit {
+    background: none; border: none; color: #90A4AE;
+    font-size: 16px; cursor: pointer; padding: 4px; flex-shrink: 0;
+    transition: transform 0.15s; line-height: 1;
+  }
+  .btn-edit:hover { transform: scale(1.2); color: #455A64; }
+
+  /* Modal Editar */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 500;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: white; border-radius: 16px;
+    padding: 24px; width: 90%; max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .modal-box h3 { font-size: 16px; color: #075E54; margin-bottom: 16px; }
+  .modal-box input {
+    width: 100%; padding: 10px 14px; margin-bottom: 10px;
+    border: 1px solid #ccc; border-radius: 20px;
+    font-size: 14px; outline: none; font-family: 'Nunito', Arial, sans-serif;
+  }
+  .modal-box input:focus { border-color: #075E54; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .btn-modal-save {
+    background: #25D366; color: white; border: none; border-radius: 20px;
+    padding: 8px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+  .btn-modal-cancel {
+    background: #eee; color: #555; border: none; border-radius: 20px;
+    padding: 8px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+
+  .empty { text-align: center; padding: 40px; color: #888; font-size: 15px; }
+
+  .reset-btn {
+    display: block; margin: 16px auto;
+    background: #ff5252; color: white; border: none; border-radius: 20px;
+    padding: 10px 24px; font-size: 14px; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif; font-weight: 700;
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #333; color: white; padding: 10px 22px;
+    border-radius: 24px; font-size: 14px; font-weight: 600;
+    z-index: 9999; transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Timer vermelho para enviados */
+  .sent-timer {
+    font-size: 11px; font-weight: 800; margin-top: 4px;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 10px;
+    background: #FFEBEE; color: #C62828;
+    border: 1px solid #EF9A9A;
+    letter-spacing: 0.3px;
+  }
+  .sent-timer .dot-blink {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #E53935; display: inline-block;
+    animation: blink-red 1s infinite;
+  }
+  @keyframes blink-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* Modal importar */
+  .import-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 600;
+    align-items: center; justify-content: center;
+  }
+  .import-modal-overlay.open { display: flex; }
+  .import-modal-box {
+    background: white; border-radius: 18px;
+    padding: 24px 22px; width: 92%; max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .import-modal-box h3 { font-size: 17px; color: #075E54; margin-bottom: 4px; }
+  .import-instructions {
+    background: #F1F8F5; border-left: 4px solid #25D366;
+    border-radius: 0 8px 8px 0; padding: 12px 14px;
+    margin: 12px 0; font-size: 12.5px; color: #333; line-height: 1.7;
+  }
+  .import-instructions b { color: #075E54; }
+  .import-instructions code {
+    background: #E8F5E9; color: #1B5E20;
+    padding: 1px 6px; border-radius: 4px; font-family: monospace;
+    font-size: 11.5px;
+  }
+  .import-example {
+    background: #263238; color: #80CBC4;
+    border-radius: 8px; padding: 10px 14px;
+    font-family: monospace; font-size: 12px; margin: 8px 0 14px;
+    white-space: pre; line-height: 1.6;
+  }
+  .import-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .btn-import-file {
+    background: #25D366; color: white; border: none; border-radius: 20px;
+    padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif; display: flex; align-items: center; gap: 6px;
+    transition: background 0.2s;
+  }
+  .btn-import-file:hover { background: #128C7E; }
+  .btn-import-cancel {
+    background: #eee; color: #555; border: none; border-radius: 20px;
+    padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+
+  @media (max-width: 480px) {
+    .btn-send { padding: 7px 10px; font-size: 11px; }
+    .info .name { font-size: 14px; }
+    .btn-import, .btn-export { padding: 8px 10px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+      <rect x="2" y="2" width="34" height="26" rx="8" fill="#25D366"/>
+      <polygon points="8,28 14,28 10,36" fill="#25D366"/>
+      <polygon points="22,7 15,20 20,20 16,31 25,16 20,16 24,7" fill="white"/>
+    </svg>
+    <div>
+      <div style="font-size:18px;font-weight:800;letter-spacing:0.5px;">ZapList</div>
+      <div style="font-size:11px;opacity:0.8;font-weight:500;">Gestor de Envios Rápidos</div>
+    </div>
+  </div>
+  <div class="msg-box">
+    <label>✏️ Edite sua mensagem aqui:</label>
+    <textarea id="msgText">Oi👋, estamos com novidades e promoções, confira nossos lançamentos e muito mais!</textarea>
+  </div>
+  <div class="stats">
+    <div class="stat-badge">Total: <span id="totalCount">0</span></div>
+    <div class="stat-badge green">✅ Enviados: <span id="sentCount">0</span></div>
+    <div class="stat-badge orange">⏳ Aguardando: <span id="cooldownCount">0</span></div>
+    <div class="stat-badge">🔔 Prontos: <span id="readyCount">0</span></div>
+    <div class="stat-badge">Restante: <span id="leftCount">0</span></div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="🔍 Buscar por nome ou número..." oninput="renderList()">
+  </div>
+  <select class="sort-select" id="sortSelect" onchange="renderList()">
+    <option value="default">📋 Ordem padrão</option>
+    <option value="name">🔤 Nome A-Z</option>
+    <option value="phone">🔢 Número</option>
+    <option value="status">🔀 Status</option>
+  </select>
+  <button class="btn-add-open" onclick="toggleAddPanel()">➕ Novo</button>
+  <button class="btn-import" onclick="openImportModal()">📂 Importar</button>
+  <button class="btn-export" onclick="exportContacts()">📤 Exportar</button>
+  <input type="file" id="fileInput" accept=".txt,.csv" onchange="importFile(event)">
+</div>
+
+<!-- Painel adicionar contato -->
+<div class="add-panel" id="addPanel">
+  <div class="add-row">
+    <input type="text" id="newName" placeholder="Nome do contato">
+    <input type="tel" id="newPhone" placeholder="Telefone (ex: 5521999999999)">
+    <button class="btn-add-confirm" onclick="addContact()">✅ Adicionar</button>
+  </div>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="setFilter('all', this)">Todos</button>
+  <button class="filter-btn" onclick="setFilter('pending', this)">Não enviados</button>
+  <button class="filter-btn" onclick="setFilter('sent', this)">Já enviados</button>
+  <button class="filter-btn" onclick="setFilter('cooldown', this)">⏳ Aguardando</button>
+  <button class="filter-btn" onclick="setFilter('ready', this)">🔔 Prontos reenvio</button>
+</div>
+
+<div class="list" id="contactList"></div>
+
+<button class="reset-btn" onclick="resetAll()">🗑️ Resetar todos os enviados</button>
+
+<!-- Modal Editar -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3>✏️ Editar Contato</h3>
+    <input type="text" id="editName" placeholder="Nome do contato">
+    <input type="tel" id="editPhone" placeholder="Telefone">
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-modal-save" onclick="saveEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar -->
+<div class="import-modal-overlay" id="importModal">
+  <div class="import-modal-box">
+    <h3>📂 Importar Contatos</h3>
+    <div class="import-instructions">
+      <b>Como importar:</b><br>
+      Selecione um arquivo <code>.txt</code> ou <code>.csv</code> com um contato por linha.<br><br>
+      <b>Formato aceito:</b><br>
+      • <b>Nome e número separados por vírgula ou ponto-e-vírgula:</b><br>
+      &nbsp;&nbsp;<code>Nome, 5521999990000</code><br>
+      • <b>Apenas o número (sem nome):</b><br>
+      &nbsp;&nbsp;<code>5521999990000</code><br><br>
+      <b>⚠️ Importante:</b><br>
+      — O número deve estar no formato internacional com DDI (ex: <code>55</code> para Brasil + DDD + número).<br>
+      — Contatos com número já existente na lista serão ignorados automaticamente.<br>
+      — Seus contatos atuais <b>não serão apagados</b>, apenas novos serão adicionados.
+    </div>
+    <div class="import-example">João Silva, 5521999990001
+Maria Santos, 5511988880002
+5521977770003</div>
+    <div class="import-actions">
+      <button class="btn-import-cancel" onclick="closeImportModal()">Cancelar</button>
+      <button class="btn-import-file" onclick="document.getElementById('fileInput').click()">📁 Escolher Arquivo</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_CONTACTS = [{"n": "Cemeru_central", "t": "552124140013"}, {"n": "M", "t": "55830243076"}, {"n": "1", "t": "5521972075343"}, {"n": "1", "t": "5511934532808"}, {"n": "1", "t": "5521979753271"}, {"n": "1", "t": "5511984396772"}, {"n": "1", "t": "5521981430594"}, {"n": "Village1", "t": "5512997223503"}, {"n": "Village1", "t": "5511957881978"}, {"n": "Village1", "t": "5511964303499"}, {"n": "Village1", "t": "5514988348528"}, {"n": "Village1", "t": "5511998535077"}, {"n": "Village1", "t": "5511972587852"}, {"n": "Village1", "t": "5511960651025"}, {"n": "Village1", "t": "5511966118791"}, {"n": "Village1", "t": "5514999014408"}, {"n": "Village1", "t": "5511981618704"}, {"n": "Village1", "t": "5511985461098"}, {"n": "Village1", "t": "5511984240258"}, {"n": "Village1", "t": "5517988231175"}, {"n": "Village1", "t": "5519982235723"}, {"n": "Village1", "t": "5511964574399"}, {"n": "Village1", "t": "5511967873003"}, {"n": "Village1", "t": "5521995840719"}, {"n": "Village1", "t": "5518991070698"}, {"n": "Village1", "t": "5511983242978"}, {"n": "Village1", "t": "5524988363595"}, {"n": "Village1", "t": "5527996094903"}, {"n": "Village1", "t": "5511981399215"}, {"n": "Village1", "t": "5521997111505"}, {"n": "Village1", "t": "5511975911626"}, {"n": "Village1", "t": "5521971836441"}, {"n": "Village1", "t": "5519992438113"}, {"n": "Village1", "t": "5519997417905"}, {"n": "Village1", "t": "5511980372063"}, {"n": "Village1", "t": "5516997602517"}, {"n": "Village1", "t": "5511999503474"}, {"n": "Village1", "t": "5521980342223"}, {"n": "Village1", "t": "5512982813974"}, {"n": "Village1", "t": "5511974410195"}, {"n": "Village1", "t": "5527998409970"}, {"n": "Village1", "t": "5511930103846"}, {"n": "Village1", "t": "5511933413988"}, {"n": "Village1", "t": "5513988775325"}, {"n": "Village1", "t": "5511974736536"}, {"n": "Village1", "t": "5511945751747"}, {"n": "Village1", "t": "5517992176763"}, {"n": "Village1", "t": "5521970643040"}, {"n": "Village1", "t": "5511970964687"}, {"n": "Village1", "t": "5511963382608"}, {"n": "Village1", "t": "5521965516320"}, {"n": "Village1", "t": "5527988232856"}, {"n": "Sem nome", "t": "5521976714137"}, {"n": "Village1", "t": "5511949514731"}, {"n": "Douglas", "t": "5521966904550"}, {"n": "Rodrigo Supervisor ML", "t": "5521982523267"}, {"n": "Ailton Supervisor ML", "t": "5521985751603"}, {"n": "Sniper33", "t": "5531992683424"}, {"n": "Digitador", "t": "5521979928710"}, {"n": "Adriano", "t": "5521996130765"}, {"n": "Vila", "t": "5521992565300"}, {"n": "Eduardo Rh", "t": "5521991928536"}, {"n": "Matheus PRALOG", "t": "5521993799801"}, {"n": "Broa", "t": "5521973825963"}, {"n": "Broa", "t": "5521995629844"}, {"n": "Dr. Fernando Advogado", "t": "5521997980722"}, {"n": "Lh", "t": "55979306043"}, {"n": "Mãe", "t": "5521975245572"}, {"n": "Pai", "t": "5521974882176"}, {"n": "Redred", "t": "5522997507159"}, {"n": "Baiana", "t": "5521974232065"}, {"n": "Jorge", "t": "5521975716000"}, {"n": "Jorge", "t": "5521957716000"}, {"n": "Tio Rogério", "t": "595983777113"}, {"n": "Ornelas", "t": "5521973736372"}, {"n": "2799-3329", "t": "5527993329"}, {"n": "+55 21 97424-5630", "t": "5521974245630"}, {"n": "+55 21 99051-5351", "t": "5521990515351"}, {"n": "Thiago Rodrigues", "t": "5521974245630"}, {"n": "Tacio", "t": "5521966679704"}, {"n": "Daniel", "t": "5521972681154"}, {"n": "Leandro", "t": "5521987280576"}, {"n": "Filho", "t": "5521978919884"}, {"n": "Lorran", "t": "5521975251068"}, {"n": "Tia Solange", "t": "5521993427920"}, {"n": "Fabiano Realengo", "t": "55974885461"}, {"n": "LAND", "t": "5521964907241"}, {"n": "Irmão", "t": "5521992938294"}, {"n": "Santander", "t": "5540043535"}, {"n": "Zion Telemarketing", "t": "55981939522"}, {"n": "CERVEJA BEER🍻🍺", "t": "5521979133758"}, {"n": "Village1", "t": "5515997687500"}, {"n": "Telecom", "t": "5521985219470"}, {"n": "Sniper X", "t": "5511998440337"}, {"n": "Primo Diego", "t": "5521976766626"}, {"n": "Higor Loja", "t": "5521984124840"}, {"n": "Luciene", "t": "5521975183234"}, {"n": "Village1", "t": "5521991090397"}, {"n": "Kauãn Primo", "t": "5521991149117"}, {"n": "Ronny", "t": "5521964787362"}, {"n": "Baiana Roupas", "t": "55986673250"}, {"n": "Meu Alelo", "t": "5540047733"}, {"n": "Japão", "t": "5521993827075"}, {"n": "Thais", "t": "5521992090897"}, {"n": "Viiillage1", "t": "5521982555657"}, {"n": "Vitória", "t": "5521968127532"}, {"n": "Village111", "t": "5521993563772"}, {"n": "Sniper2", "t": "5519974128635"}, {"n": "Antônio", "t": "5521972363889"}, {"n": "Antônio 2", "t": "5521999005966"}, {"n": "Village1/Sniper1", "t": "5514991977611"}, {"n": "Sueli", "t": "5521976704240"}, {"n": "Sniper2", "t": "5511971558815"}, {"n": "Village1", "t": "5511976775609"}, {"n": "Village1", "t": "5511963029320"}, {"n": "Graciete", "t": "5521984287560"}, {"n": "Village1 🌻", "t": "5511957174716"}, {"n": "Sniper2", "t": "5512981278726"}, {"n": "Raphael", "t": "5521976788074"}, {"n": "Village1", "t": "5542998042043"}, {"n": "Sniper2", "t": "5519994104538"}, {"n": "Guilherme Deupino", "t": "5561996203303"}, {"n": "Village1", "t": "5511941894037"}, {"n": "Village1", "t": "5511986922325"}, {"n": "Sniper2", "t": "5511970882401"}, {"n": "Village1", "t": "5511970309679"}, {"n": "Village1", "t": "5511963757171"}, {"n": "Facebook Sniper2", "t": "5521979974405"}, {"n": "Sniper2", "t": "5511953781753"}, {"n": "Impressora Marketing", "t": "5521997271051"}, {"n": "Dr Léo", "t": "5521972604591"}, {"n": "Villagexxx", "t": "55042998042043"}, {"n": "Vigban", "t": "5521988686084"}, {"n": "Darlan", "t": "5521969444473"}, {"n": "Andre", "t": "5521982454070"}, {"n": "Sniper222", "t": "5511952824429"}, {"n": "Nara", "t": "5521967147989"}, {"n": "1", "t": "5527988720809"}, {"n": "1", "t": "5521990357075"}, {"n": "1", "t": "5521995505942"}, {"n": "1", "t": "5521968598766"}, {"n": "Wilson Paixao", "t": "5521982653916"}, {"n": "1", "t": "5521999669339"}, {"n": "Sniper1 Dos Sant", "t": "5521967655695"}, {"n": "X.Storedigitalgames", "t": "5521964920420"}, {"n": "Sniper2", "t": "5511954870414"}, {"n": "1", "t": "5521981903052"}, {"n": "1", "t": "5521979916240"}, {"n": "1", "t": "553171591428"}, {"n": "1", "t": "5521982150946"}, {"n": "1", "t": "5521999147240"}, {"n": "1", "t": "5521985013367"}, {"n": "1", "t": "5521990511503"}, {"n": "1 Bueno", "t": "5521986356649"}, {"n": "1", "t": "5521973920962"}, {"n": "1", "t": "5513991657238"}, {"n": "Eldenring", "t": "5511978636703"}, {"n": "LC Gráfica LC Oficial", "t": "5521992467268"}, {"n": "LC GRAFICA BORDADOS", "t": "5521992467268"}, {"n": "1", "t": "5527997312680"}, {"n": "1", "t": "5521981050491"}, {"n": "1", "t": "5521972567884"}, {"n": "1", "t": "5511993389089"}, {"n": "Legostarwars(P)", "t": "5519971047595"}, {"n": "1", "t": "5511977935607"}, {"n": "Sniper2(A)/Forza5(P)", "t": "5511982967763"}, {"n": "1", "t": "5521970156861"}, {"n": "Vv", "t": "5521847930917"}, {"n": "1", "t": "5517997038459"}, {"n": "Dying Light 2/(P)", "t": "5511971618647"}, {"n": "Village/ Eldenring (A)", "t": "5521980711160"}, {"n": "Eldenring(A) Cuphead (P)Minecraft(P)", "t": "5519998234235"}, {"n": "1", "t": "5521975512597"}, {"n": "Village1(A)(Eldenring)(A)", "t": "5512997264362"}, {"n": "Lego StarWars(P) 1", "t": "5528999252646"}, {"n": "Renata Líder", "t": "5521982670113"}, {"n": "Village(A)/Gtatrilogia(P)/ Codwar(P)/(Forza5(P)", "t": "5511977797412"}, {"n": "1", "t": "5511998341100"}, {"n": "1", "t": "5513991120747"}, {"n": "1", "t": "5518996329237"}, {"n": "1", "t": "5521971134036"}, {"n": "Sem nome", "t": "555139394449"}, {"n": "Gta5(P)Pes21(P)", "t": "5521981014450"}, {"n": "1", "t": "553173385133"}, {"n": "Village1/Insurgency(P)", "t": "5522997696149"}, {"n": "1", "t": "5522997676713"}, {"n": "1", "t": "5521984005473"}, {"n": "Sniper2/ Reddeas2", "t": "5511993451807"}, {"n": "Dying Light 2(P)", "t": "5513988730181"}, {"n": "Eldenring ( A)", "t": "5513982282818"}, {"n": "Gta5/Tênis/Mafia", "t": "5519983392281"}, {"n": "Village(A) /Sniper 2(A)/Farming22(P)", "t": "5521982589306"}, {"n": "1", "t": "5511980926603"}, {"n": "1", "t": "5527988636950"}, {"n": "Eldenring(A)/Ghost Recon (P)", "t": "5521965549572"}, {"n": "Elden Ring (A)", "t": "5516997097939"}, {"n": "Naruto4(P)", "t": "5511994442485"}, {"n": "Village(A)Martaisdead(P)", "t": "5521964258673"}, {"n": "1", "t": "5527988786334"}, {"n": "Pes21/RedDead2(P)", "t": "5521980920599"}, {"n": "Ciro", "t": "55966253203"}, {"n": "Ghostrecon(P)/RedDead2(P) Vanguard (P)Fifa22(P)", "t": "5521976953840"}, {"n": "Village(A)/RedDead2(P)/(Vanguard)(Codwar)Re2/Re3/Dmc5(P)", "t": "5511912795740"}, {"n": "Eldenring(A) /Re4(P)", "t": "5511988036611"}, {"n": "Village1 / Crash 4", "t": "5511949842507"}, {"n": "Eldenring(A) /Dyinglight2(P)", "t": "5511949590174"}, {"n": "Jurrasic 2 (P) / GTA 5(P) Gamepass", "t": "5521970976947"}, {"n": "RedDead(P)Gta5(P) Gamepass", "t": "5521976801975"}, {"n": "Vanguard/Morden Warfare / Parceria / Gta5", "t": "5521986390440"}, {"n": "RedDead2 (P) Eldenring( P) Dyinglight2 Watch Dogs2", "t": "5527998203443"}, {"n": "Sniper2(A) Insurgência", "t": "5514998861501"}, {"n": "Vanguard(P) Cyberpunk (P) Valhalla", "t": "5519971672784"}, {"n": "Eldenring", "t": "5518991913113"}, {"n": "1", "t": "5511959656502"}, {"n": "Pizzaria Millenium", "t": "55989401976"}, {"n": "Sniper /Gamepass Valhalla", "t": "5527995002724"}, {"n": "Eldenring(A)/Crash4(P) Jurrasc 2 Liitle", "t": "5511999150243"}, {"n": "Sekiro (P) Odysse", "t": "5513981868730"}, {"n": "Fivenight(P)Valhalla(P)evildead(P)Re456", "t": "5511979544008"}, {"n": "1 👩‍❤️‍💋‍👨", "t": "5521979767468"}, {"n": "Elden Ring", "t": "5511982354421"}, {"n": "Thequarry", "t": "5521979204216"}, {"n": "FarCry 6", "t": "5524988384727"}, {"n": "Eldenring", "t": "558197516629"}, {"n": "GTA ,Valhalla", "t": "5521967454853"}, {"n": "Elden Ring", "t": "5516991362339"}, {"n": "Gamepass Gamepass", "t": "5522997404042"}, {"n": "Gamepass", "t": "559885086392"}, {"n": "1", "t": "5517996834089"}, {"n": "1", "t": "5511958870407"}, {"n": "1", "t": "558399227075"}, {"n": "Elden", "t": "5515998466052"}, {"n": "1", "t": "5511981164664"}, {"n": "Village", "t": "5514996713079"}, {"n": "Reddead", "t": "5517991204403"}, {"n": "Elden , Village", "t": "5511970854065"}, {"n": "Gamepass", "t": "558695959852"}, {"n": "Village1", "t": "5511980128756"}, {"n": "Vanguard", "t": "5517981416260"}, {"n": "Gleice", "t": "5521968987216"}, {"n": "1", "t": "5521971134361"}, {"n": "1", "t": "5521971791873"}, {"n": "1", "t": "5511963443016"}, {"n": "Gamepass 🇾🇪", "t": "5511959902625"}, {"n": "1 1", "t": "5521985042978"}, {"n": "GTA,Vanguard,Mw", "t": "5521997053351"}, {"n": "Valhalla", "t": "5515991259201"}, {"n": "1", "t": "5521979470832"}, {"n": "1", "t": "5521965975748"}, {"n": "1", "t": "5511978121212"}, {"n": "Gamepass Oliveira", "t": "5521964530980"}, {"n": "1", "t": "5521972697220"}, {"n": "Eldenring,Village", "t": "5527995176343"}, {"n": "1", "t": "5521975120250"}, {"n": "1", "t": "5527997019404"}, {"n": "1", "t": "5513991323699"}, {"n": "Elden", "t": "5521964415351"}, {"n": "1", "t": "5519998598453"}, {"n": "1", "t": "558184635880"}, {"n": "Gamepass", "t": "5518991623483"}, {"n": "Reddead2", "t": "5511959313740"}, {"n": "1", "t": "558694785093"}, {"n": "Gamepass", "t": "558587112484"}, {"n": "1", "t": "5511940301465"}, {"n": "Gamepass", "t": "558898476989"}, {"n": "1", "t": "559286110298"}, {"n": "1", "t": "5524998785675"}, {"n": "1", "t": "559284286810"}, {"n": "1", "t": "5522997278878"}, {"n": "Gamepass", "t": "5511965723239"}, {"n": "Gamepass", "t": "558892856395"}, {"n": "Thequarry", "t": "558398414965"}, {"n": "Eldenring", "t": "5521995319384"}, {"n": "F1 2022", "t": "5521999349598"}, {"n": "1", "t": "5521993988941"}, {"n": "1 Bessa", "t": "5524988635030"}, {"n": "1 Firme", "t": "5521987211066"}, {"n": "Ornelas", "t": "5521991916180"}, {"n": "1", "t": "5521993059614"}, {"n": "1", "t": "5521987846371"}, {"n": "1", "t": "553173408924"}, {"n": "1 1", "t": "5521977122693"}, {"n": "Eldenring(A)Farcray6(P)(Vanguard)(P)Bf2042", "t": "5519992315654"}, {"n": "1", "t": "5521969888426"}, {"n": "Carmecanic", "t": "5515991252198"}, {"n": "Olx", "t": "5531997028128"}, {"n": "1", "t": "558186360966"}, {"n": "1", "t": "5521982397852"}, {"n": "1", "t": "5511961579520"}, {"n": "1", "t": "558496389318"}, {"n": "1 Gabriel", "t": "994406847455"}, {"n": "Village", "t": "5511930479995"}, {"n": "1", "t": "5527995136489"}, {"n": "1", "t": "5524992616262"}, {"n": "1 Barbosa", "t": "5524988153335"}, {"n": "Henrique", "t": "5511966614823"}, {"n": "Village/Eldenring(A) Gamepass 6meses Gustavo", "t": "5511914170165"}, {"n": "Dona Lucy", "t": "5521993860699"}, {"n": "Carlinhos", "t": "5521966561645"}, {"n": "Mxgp19", "t": "5511971126457"}, {"n": "1", "t": "5521979968386"}, {"n": "1", "t": "5521972114006"}, {"n": "1 1", "t": "5521980643717"}, {"n": "1", "t": "558396767727"}, {"n": "Dinho Stefano Dobchev", "t": "5521990695617"}, {"n": "Tio Celso", "t": "5521973460061"}, {"n": "Rafael .Britto", "t": "5521977410247"}, {"n": "1", "t": "5521969657466"}, {"n": "1", "t": "5515988148710"}, {"n": "Elden Ring", "t": "5511954936301"}, {"n": "Resident 4", "t": "5511965897590"}, {"n": "1", "t": "558585238217"}, {"n": "1", "t": "559984531846"}, {"n": "1", "t": "5513992117911"}, {"n": "1", "t": "5511985034955"}, {"n": "1", "t": "5511995939508"}, {"n": "1", "t": "5527996158410"}, {"n": "1 1", "t": "5521972511836"}, {"n": "George", "t": "5521974103553"}, {"n": "Elden Ring", "t": "5512992592584"}, {"n": "1", "t": "5514996870911"}, {"n": "1", "t": "5521973448824"}, {"n": "1", "t": "5519991053149"}, {"n": "Wilson", "t": "5521972758661"}, {"n": "1", "t": "5521977046508"}];
+
+// ─── Estado ────────────────────────────────────────────────────────
+let CONTACTS = [];
+let sentSet = new Set();       // idx → enviado definitivo
+let cooldownMap = {};          // idx → timestamp de envio (para timer 24h)
+let currentFilter = 'all';
+let editingIdx = null;
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+// ─── Persistência ──────────────────────────────────────────────────
+function loadState() {
+  // Sempre carrega os contatos padrão se não houver nada salvo ou se o arquivo foi reaberto
+  const saved = localStorage.getItem('wapp_contacts');
+  if (!saved) {
+    CONTACTS = JSON.parse(JSON.stringify(DEFAULT_CONTACTS));
+  } else {
+    try { CONTACTS = JSON.parse(saved); }
+    catch(e) { CONTACTS = JSON.parse(JSON.stringify(DEFAULT_CONTACTS)); }
+  }
+  // Se a lista salva tiver menos contatos que o padrão, mescla (não perde contatos do arquivo)
+  if (CONTACTS.length < DEFAULT_CONTACTS.length) {
+    const phones = new Set(CONTACTS.map(c => c.t));
+    DEFAULT_CONTACTS.forEach(c => { if (!phones.has(c.t)) CONTACTS.push(c); });
+    saveContacts();
+  }
+  try { sentSet = new Set(JSON.parse(localStorage.getItem('wapp_sent') || '[]')); }
+  catch(e) { sentSet = new Set(); }
+  try { cooldownMap = JSON.parse(localStorage.getItem('wapp_cooldown') || '{}'); }
+  catch(e) { cooldownMap = {}; }
+}
+function saveContacts() { localStorage.setItem('wapp_contacts', JSON.stringify(CONTACTS)); }
+function saveSent() { localStorage.setItem('wapp_sent', JSON.stringify([...sentSet])); }
+function saveCooldown() { localStorage.setItem('wapp_cooldown', JSON.stringify(cooldownMap)); }
+
+// ─── Timer helpers (chave = telefone, imune a reindexação) ──────────
+function getCooldownStatus(phone) {
+  const ts = cooldownMap[phone];
+  if (!ts) return null;
+  const elapsed = Date.now() - ts;
+  if (elapsed >= COOLDOWN_MS) return 'ready';
+  return 'cooling';
+}
+
+function formatTimeLeft(phone) {
+  const ts = cooldownMap[phone];
+  if (!ts) return '';
+  const left = COOLDOWN_MS - (Date.now() - ts);
+  if (left <= 0) return '';
+  const h = Math.floor(left / 3600000);
+  const m = Math.floor((left % 3600000) / 60000);
+  return `${h}h ${m}min restantes`;
+}
+
+// ─── Toast ─────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── Modal Importar ─────────────────────────────────────────────────
+function openImportModal() {
+  document.getElementById('importModal').classList.add('open');
+}
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('open');
+}
+
+// ─── Importar arquivo ──────────────────────────────────────────────
+function importFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+    let imported = 0, skipped = 0;
+    lines.forEach(line => {
+      const parts = line.split(/[,;]/).map(p => p.trim());
+      let name = '', phone = '';
+      if (parts.length >= 2) { name = parts[0]; phone = parts[1].replace(/\D/g, ''); }
+      else { phone = parts[0].replace(/\D/g, ''); name = phone; }
+      if (!phone || phone.length < 8) { skipped++; return; }
+      if (CONTACTS.some(c => c.t === phone)) { skipped++; return; }
+      CONTACTS.push({ n: name || phone, t: phone });
+      imported++;
+    });
+    saveContacts(); updateStats(); renderList();
+    showToast(`✅ ${imported} importados${skipped ? `, ${skipped} ignorados` : ''}!`);
+    event.target.value = '';
+    closeImportModal();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ─── Exportar lista ────────────────────────────────────────────────
+function exportContacts() {
+  const filter = currentFilter;
+  const now = Date.now();
+  let lines = ['Nome,Telefone,Status'];
+  CONTACTS.forEach((c, i) => {
+    const cs = getCooldownStatus(i);
+    let status = 'Pendente';
+    if (sentSet.has(i)) status = 'Enviado';
+    else if (cs === 'cooling') status = 'Aguardando 24h';
+    else if (cs === 'ready') status = 'Pronto Reenvio';
+
+    // Aplica filtro atual
+    if (filter === 'sent' && !sentSet.has(i)) return;
+    if (filter === 'pending' && (sentSet.has(i) || cs)) return;
+    if (filter === 'cooldown' && cs !== 'cooling') return;
+    if (filter === 'ready' && cs !== 'ready') return;
+
+    lines.push(`"${c.n.replace(/"/g,'""')}",${c.t},${status}`);
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'zaplist_contatos.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📤 ${lines.length - 1} contatos exportados!`);
+}
+
+// ─── Excluir contato ───────────────────────────────────────────────
+function deleteContact(idx) {
+  const phone = CONTACTS[idx].t;
+  CONTACTS.splice(idx, 1);
+  // Reindexar sentSet
+  const newSent = new Set();
+  sentSet.forEach(i => { if (i < idx) newSent.add(i); else if (i > idx) newSent.add(i - 1); });
+  sentSet = newSent;
+  // Remover cooldown pelo telefone (não precisa reindexar)
+  delete cooldownMap[phone];
+  saveContacts(); saveSent(); saveCooldown(); updateStats(); renderList();
+  showToast('🗑️ Contato removido!');
+}
+
+function confirmDelete(idx) {
+  const name = CONTACTS[idx]?.n || 'este contato';
+  if (confirm(`Excluir "${name}"? Isso não pode ser desfeito.`)) deleteContact(idx);
+}
+
+// ─── Editar contato ────────────────────────────────────────────────
+function openEditModal(idx) {
+  editingIdx = idx;
+  document.getElementById('editName').value = CONTACTS[idx].n;
+  document.getElementById('editPhone').value = CONTACTS[idx].t;
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() {
+  editingIdx = null;
+  document.getElementById('editModal').classList.remove('open');
+}
+function saveEdit() {
+  if (editingIdx === null) return;
+  const name = document.getElementById('editName').value.trim();
+  const phone = document.getElementById('editPhone').value.replace(/\D/g, '').trim();
+  if (!phone || phone.length < 8) { showToast('⚠️ Telefone inválido!'); return; }
+  // Verifica duplicata (exceto o próprio)
+  if (CONTACTS.some((c, i) => c.t === phone && i !== editingIdx)) {
+    showToast('⚠️ Este número já está na lista!'); return;
+  }
+  CONTACTS[editingIdx].n = name || phone;
+  CONTACTS[editingIdx].t = phone;
+  saveContacts(); renderList(); closeEditModal();
+  showToast('✅ Contato atualizado!');
+}
+
+// ─── Marcar enviado com timer ───────────────────────────────────────
+function markSent(phone) {
+  const idx = CONTACTS.findIndex(c => c.t === phone);
+  if (idx === -1) return;
+
+  // Registra timestamp usando telefone como chave (imune a reindexação)
+  cooldownMap[phone] = Date.now();
+
+  // Move contato para o final da lista
+  const contact = CONTACTS.splice(idx, 1)[0];
+  CONTACTS.push(contact);
+
+  // Reindexar sentSet após a movimentação
+  const newSent = new Set();
+  sentSet.forEach(i => {
+    if (i < idx) newSent.add(i);
+    else if (i > idx) newSent.add(i - 1);
+  });
+  // Adiciona o novo índice (contato foi para o final)
+  newSent.add(CONTACTS.length - 1);
+  sentSet = newSent;
+
+  saveContacts(); saveSent(); saveCooldown(); updateStats(); renderList();
+}
+
+function undoSent(phone) {
+  const idx = CONTACTS.findIndex(c => c.t === phone);
+  if (idx !== -1) sentSet.delete(idx);
+  delete cooldownMap[phone];
+  saveSent(); saveCooldown(); updateStats(); renderList();
+}
+
+// ─── Render ─────────────────────────────────────────────────────────
+function renderList() {
+  const container = document.getElementById('contactList');
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const msgText = document.getElementById('msgText').value;
+  const msg = encodeURIComponent(msgText);
+  const sortVal = document.getElementById('sortSelect').value;
+  const now = Date.now();
+
+  let list = CONTACTS.map((c, i) => ({ ...c, idx: i }));
+
+  // Ordenação
+  if (sortVal === 'name') {
+    list.sort((a, b) => a.n.localeCompare(b.n, 'pt-BR'));
+  } else if (sortVal === 'phone') {
+    list.sort((a, b) => a.t.localeCompare(b.t));
+  } else if (sortVal === 'status') {
+    // Pendente → Cooldown → Ready → Enviado
+    const order = c => {
+      const cs = getCooldownStatus(c.idx);
+      if (sentSet.has(c.idx)) return 3;
+      if (cs === 'cooling') return 1;
+      if (cs === 'ready') return 2;
+      return 0;
+    };
+    list.sort((a, b) => order(a) - order(b));
+  }
+
+  // Filtro de busca
+  let filtered = list.filter(c => {
+    return c.n.toLowerCase().includes(search) || c.t.includes(search);
+  });
+
+  // Filtro de status
+  filtered = filtered.filter(c => {
+    const cs = getCooldownStatus(c.t);
+    const isSent = sentSet.has(c.idx);
+    if (currentFilter === 'pending') return !isSent && !cs;
+    if (currentFilter === 'sent') return isSent;
+    if (currentFilter === 'cooldown') return cs === 'cooling';
+    if (currentFilter === 'ready') return cs === 'ready';
+    return true;
+  });
+
+  const CHUNK = 300;
+  let html = '';
+
+  if (filtered.length === 0) {
+    html = '<div class="empty">Nenhum contato encontrado. 😕</div>';
+  }
+
+  filtered.slice(0, CHUNK).forEach(c => {
+    const isSent = sentSet.has(c.idx);
+    const cs = getCooldownStatus(c.t);
+    const link = `https://wa.me/${c.t}?text=${msg}`;
+    const bizLink = `whatsapp://send?phone=${c.t}&text=${msg}`;
+    const initial = c.n.charAt(0).toUpperCase();
+    const phoneFormatted = c.t.replace(/^55(\d{2})(\d{4,5})(\d{4})$/, '+55 ($1) $2-$3');
+
+    let cardClass = 'contact-card';
+    let avatarClass = 'avatar';
+    let timerHtml = '';
+    let actionHtml = '';
+
+    if (isSent) {
+      cardClass += ' sent';
+      avatarClass += ' sent-av';
+      // Timer 24h vermelho para enviados
+      const sentTime = cooldownMap[c.t];
+      let sentTimerHtml = '';
+      if (sentTime) {
+        const left = COOLDOWN_MS - (now - sentTime);
+        if (left > 0) {
+          const h = Math.floor(left / 3600000);
+          const m = Math.floor((left % 3600000) / 60000);
+          const s = Math.floor((left % 60000) / 1000);
+          sentTimerHtml = `<div class="sent-timer"><span class="dot-blink"></span>🕐 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} restantes</div>`;
+        } else {
+          sentTimerHtml = `<div class="sent-timer" style="background:#E8F5E9;color:#2E7D32;border-color:#A5D6A7;"><span class="dot-blink" style="background:#43A047;"></span>✅ Pronto p/ reenviar!</div>`;
+        }
+      }
+      actionHtml = `<span style="color:#25D366;font-size:13px;font-weight:bold">✔️ Enviado</span>
+        <button class="btn-undo" onclick="undoSent('${c.t}')" title="Desmarcar">↩️</button>`;
+      timerHtml = sentTimerHtml;
+    } else if (cs === 'cooling') {
+      cardClass += ' cooldown';
+      avatarClass += ' cooldown-av';
+      const timeLeft = formatTimeLeft(c.t);
+      timerHtml = `<div class="timer-badge cooling">⏳ ${timeLeft}</div>`;
+      actionHtml = `<span style="color:#FF9800;font-size:12px;font-weight:bold;white-space:nowrap">⏳ Aguardando</span>
+        <button class="btn-undo" onclick="undoSent('${c.t}')" title="Cancelar timer">↩️</button>`;
+    } else if (cs === 'ready') {
+      cardClass += ' ready';
+      avatarClass += ' ready-av';
+      timerHtml = `<div class="timer-badge ready-badge">🔔 Pronto para reenviar!</div>`;
+      actionHtml = `<div class="send-group">
+        <a href="${link}" class="btn-send" onclick="setTimeout(()=>markSent('${c.t}'),1500)" target="_blank">📱 Pessoal</a>
+        <a href="${bizLink}" class="btn-send-biz" onclick="setTimeout(()=>markSent('${c.t}'),1500)">💼 Business</a>
+      </div>`;
+    } else {
+      actionHtml = `<div class="send-group">
+        <a href="${link}" class="btn-send" onclick="setTimeout(()=>markSent('${c.t}'),1500)" target="_blank">📱 Pessoal</a>
+        <a href="${bizLink}" class="btn-send-biz" onclick="setTimeout(()=>markSent('${c.t}'),1500)">💼 Business</a>
+      </div>`;
+    }
+
+    html += `
+    <div class="${cardClass}" id="card-${c.idx}">
+      <div class="${avatarClass}">${initial}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(c.n)}</div>
+        <div class="phone">${phoneFormatted || c.t}</div>
+        <div class="num">#${c.idx + 1}</div>
+        ${timerHtml}
+      </div>
+      ${actionHtml}
+      <button class="btn-edit" onclick="openEditModal(${c.idx})" title="Editar">✏️</button>
+      <button class="btn-delete" onclick="confirmDelete(${c.idx})" title="Excluir">🗑️</button>
+    </div>`;
+  });
+
+  if (filtered.length > CHUNK) {
+    html += `<div class="empty">Mostrando ${CHUNK} de ${filtered.length}. Use a busca para filtrar. 🔍</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Stats ──────────────────────────────────────────────────────────
+function updateStats() {
+  const total = CONTACTS.length;
+  const sent = sentSet.size;
+  let cooling = 0, ready = 0;
+  CONTACTS.forEach((c, i) => {
+    if (sentSet.has(i)) return;
+    const cs = getCooldownStatus(c.t);
+    if (cs === 'cooling') cooling++;
+    if (cs === 'ready') ready++;
+  });
+  document.getElementById('totalCount').innerText = total;
+  document.getElementById('sentCount').innerText = sent;
+  document.getElementById('cooldownCount').innerText = cooling;
+  document.getElementById('readyCount').innerText = ready;
+  document.getElementById('leftCount').innerText = total - sent - cooling;
+  document.getElementById('progressFill').style.width = total > 0 ? (sent / total * 100) + '%' : '0%';
+}
+
+// ─── Filtros ────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+// ─── Reset ──────────────────────────────────────────────────────────
+function resetAll() {
+  if (confirm('Desmarcar todos os enviados e limpar timers?')) {
+    sentSet.clear(); cooldownMap = {};
+    saveSent(); saveCooldown(); updateStats(); renderList();
+    showToast('🔄 Tudo resetado!');
+  }
+}
+
+// ─── Adicionar contato ──────────────────────────────────────────────
+function toggleAddPanel() {
+  const panel = document.getElementById('addPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) setTimeout(() => document.getElementById('newName').focus(), 300);
+}
+
+function addContact() {
+  const nameInput = document.getElementById('newName');
+  const phoneInput = document.getElementById('newPhone');
+  const name = nameInput.value.trim();
+  const phone = phoneInput.value.replace(/\D/g, '').trim();
+  if (!phone || phone.length < 8) { showToast('⚠️ Número inválido!'); phoneInput.focus(); return; }
+  if (CONTACTS.some(c => c.t === phone)) { showToast('⚠️ Número já está na lista!'); return; }
+  CONTACTS.push({ n: name || phone, t: phone });
+  saveContacts(); updateStats(); renderList();
+  nameInput.value = ''; phoneInput.value = ''; nameInput.focus();
+  showToast(`✅ ${name || phone} adicionado!`);
+}
+
+// ─── Auto-atualizar timers a cada segundo (para o cronômetro vermelho) ─
+setInterval(() => { renderList(); }, 1000);
+setInterval(() => { updateStats(); }, 30000);
+
+// ─── Init ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('newPhone').addEventListener('keydown', e => { if (e.key === 'Enter') addContact(); });
+  document.getElementById('editPhone').addEventListener('keydown', e => { if (e.key === 'Enter') saveEdit(); });
+  document.getElementById('editModal').addEventListener('click', e => { if (e.target === document.getElementById('editModal')) closeEditModal(); });
+  document.getElementById('importModal').addEventListener('click', e => { if (e.target === document.getElementById('importModal')) closeImportModal(); });
+});
+
+loadState();
+updateStats();
+renderList();
+</script>
+</body>
+</html>
